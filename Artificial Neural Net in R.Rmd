@@ -1,0 +1,221 @@
+---
+title: "ANN in R"
+author: "Krishna P Koirala"
+date: "6/29/2018"
+output:
+    md_document:
+     variant: markdown_github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Using Boston Data set for ANN
+
+```{r}
+rm(list = ls())
+library(MASS)
+head(Boston)
+```
+
+```{r}
+str(Boston)
+```
+
+
+```{r}
+summary(Boston)
+```
+
+```{r}
+# Check missing values if present in df
+any(is.na(Boston))
+# No NAs
+```
+
+
+```{r}
+df <- Boston
+```
+
+# Normalize df
+
+```{r}
+# here 2 is for columns
+#maxs <- apply(df, 2, max)
+#mins <- apply(df, 2, min)
+#maxs;mins
+```
+
+
+```{r}
+#scaled.df <- scale(df, center = mins, scale = maxs-mins)
+#scaled <- as.data.frame(scaled.df)
+```
+
+
+# Normalize df in the range of [0, 1]
+Use the preProcess() method in caret package to normalize variables.
+
+```{r}
+library(caret)
+# calculate the pre-process parameters from the dataset
+preprocessParams <- preProcess(df, method = c("range"))
+# summarize transform parameters
+print(preprocessParams)
+```
+
+
+```{r}
+# transform the dataset using the parameters
+df_scaled <- predict(preprocessParams, df)
+# summarize the transformed dataset
+summary(df_scaled)
+```
+
+
+# Data Partitioning
+
+```{r}
+library(caret)
+set.seed(1234)
+trainIndex <- createDataPartition(df_scaled$medv, p = .7, list = FALSE) 
+head(trainIndex)
+```
+
+```{r}
+train_data <- df_scaled[ trainIndex,]
+test_data  <- df_scaled[-trainIndex,]
+```
+
+# Fit ANN Model on the Training Dataset
+
+```{r}
+ # Load the neuralnet package
+#install.packages('neuralnet')
+library(neuralnet)
+```
+
+```{r}
+colnames(df)
+```
+
+
+
+```{r}
+f <- as.formula(medv ~ crim + zn + indus + chas + nox + rm + age + dis + rad + tax + ptratio + black + lstat)
+
+# Altrnate of above is
+#f <- as.formula(paste("medv ~", paste(n[!n %in% "medv"], collapse = " + ")))
+```
+
+```{r}
+# Fit a neural network model with 2 hidden layers
+# The ‘hidden’ is used to set a vector of integers specifying the number of hidden neurons (vertices) in each layer.
+nn_fit_2 <- neuralnet(f, data = train_data, hidden = c(5,3), linear.output=TRUE)
+# Show results
+summary(nn_fit_2)
+```
+
+# Plot the neurla net
+
+```{r}
+# Now, let’s show the structure of the neural network trained.
+plot(nn_fit_2,rep="best", cex=0.8)
+```
+
+
+```{r}
+# Fit a neural network model with 1 hidden layer
+nn_fit_1 <- neuralnet(f, data = train_data, hidden = 6)
+# Show results
+summary(nn_fit_1)
+```
+
+
+```{r}
+plot(nn_fit_1, rep="best",cex=0.8)
+```
+
+# Evaluate Predictive Performance of the Two-Hidden-Layer Model
+
+
+```{r}
+# We cannot use the general predict() method to do the prediction for test. Instead, we use compute() method in the neuralnet package.
+# reomve "medv" from test data
+pred2_nn_values <- compute(nn_fit_2, test_data[-14]) 
+pred2_nn_values <- pred2_nn_values$net.result
+# Plot the normalized medv and predicted normalized medv
+plot(test_data$medv,pred2_nn_values)
+```
+
+
+
+```{r}
+# Transform the normalized medv prediction to original scale
+pred2 <- pred2_nn_values*(max(df$medv)-min(df$medv)) + min(df$medv) 
+test_medv <- test_data$medv*(max(df$medv)-min(df$medv)) + min(df$medv)
+ # Plot the price and predicted price
+plot(test_medv,pred2)
+```
+
+From the above plot, 
+we can see that the predicted price 
+is close to the actual price in the test dataset.
+Now, let’s calculate prediction accuracy 
+metrics including MAE (mean absolute error) 
+and RMSE (root mean-squared error).
+
+
+```{r}
+cat("MAE =", mean(abs(test_medv-pred2)))
+```
+
+```{r}
+cat("RMSE =", sqrt(mean((test_medv-pred2)^2)))
+```
+
+
+# Evaluate Predictive Performance of the One-Hidden-Layer Model
+
+```{r}
+pred1_nn_values <- compute(nn_fit_1, test_data[-14])
+pred1_nn_values <- pred1_nn_values$net.result
+```
+
+
+```{r}
+# Plot the normalized medv and predicted normalized medv
+plot(test_data$medv,pred1_nn_values)
+```
+
+
+```{r}
+# Transform the normalized medv prediction to original scale
+pred1 <- pred1_nn_values*(max(df$medv)-min(df$medv)) + min(df$medv) 
+test_price <- test_data$medv*(max(df$medv)-min(df$medv)) + min(df$medv)
+# Plot the medv and predicted medv
+plot(test_medv,pred1)
+```
+
+
+
+From the above plot, we can see that 
+the predicted price is close to the actual 
+price in the test dataset.
+Now, let’s calculate prediction accuracy metrics 
+including MAE (mean absolute error) 
+and RMSE (root mean-squared error).
+
+
+```{r}
+cat("MAE =", mean(abs(test_medv-pred1)))
+```
+
+```{r}
+cat("RMSE =", sqrt(mean((test_medv-pred1)^2)))
+```
+
+
+

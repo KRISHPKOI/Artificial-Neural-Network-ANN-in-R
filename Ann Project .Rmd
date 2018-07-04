@@ -1,0 +1,88 @@
+---
+title: "Neural net in R Project"
+author: "Krishna P Koirala"
+date: "7/3/2018"
+output:
+    md_document:
+     variant: markdown_github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+df <- read.csv('bank_note_data.csv')
+```
+
+```{r}
+head(df)
+```
+
+```{r}
+str(df)
+```
+
+```{r}
+summary(df)
+```
+
+
+```{r}
+library(caTools)
+set.seed(101)
+split <- sample.split(df$Class, SplitRatio = 0.7)
+train <- subset(df, split==T)
+test <- subset(df, split==F)
+
+```
+
+
+
+```{r}
+# linear.output = F is because it is classification
+library(neuralnet)
+nn <- neuralnet(Class~Image.Var + Image.Skew + Image.Curt + Entropy, data = train, hidden = c(5, 3), linear.output = F)
+```
+
+
+```{r}
+predicted.nn.values <- compute(nn, test[1:4])
+```
+
+```{r}
+head(predicted.nn.values$net.result)
+```
+
+
+```{r}
+predictions <- sapply(predicted.nn.values$net.result, round)
+head(predictions)
+```
+
+```{r}
+table(predictions, test$Class)
+```
+
+# Using Random Forest for above data
+
+```{r}
+library(caTools)
+set.seed(101)
+df$Class <- factor(df$Class)
+split <- sample.split(df$Class, SplitRatio = 0.7)
+train <- subset(df, split==T)
+test <- subset(df, split==F)
+```
+
+
+```{r}
+library(randomForest)
+rf.model <- randomForest(Class~., data = train)
+rf.pred <- predict(rf.model, test)
+table(rf.pred, test$Class)
+```
+
+
+Neural net has better performance on the data set
